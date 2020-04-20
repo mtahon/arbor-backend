@@ -129,12 +129,25 @@ module.exports = function (config, cached) {
        return environment;
     };
 
-    const getCurrentBlockNumber = async () => {
+    const getCurrentBlockNumber = async (attempts = 5) => {
         //const { web3 } = getEnvironment();
         return new Promise((resolve, reject) => {
-            web3.eth.getBlockNumber((err, data) => {
-                if(err) return reject(err);
-                resolve(data);
+            web3.eth.getBlockNumber()
+            .then(blockNumber => {
+                resolve(blockNumber);
+            })
+            .catch(error => {
+                log.debug('<<<getCurrentBlockNumber', error, attempts);
+                if(attempts === 0) {
+                    reject(error);
+                }
+                else {
+                    getCurrentBlockNumber(attempts - 1)
+                    .then(blockNumber => {
+                        resolve(blockNumber);
+                    })
+                    .catch(error => reject(error));
+                }
             });
         });
     };
@@ -521,12 +534,18 @@ module.exports = function (config, cached) {
         let isStale = false;
         do {
             try{
-                let currentBlock = web3.utils.toBN(await getCurrentBlockNumber());
-                let eventBlock = web3.utils.toBN(event.blockNumber);
-                log.debug(`Blocks: ${currentBlock} / ${eventBlock}`);
-                isStale = currentBlock.lt(eventBlock);
+                log.debug('==BLOCKS==');
+                let currentBlockAsNumber = await getCurrentBlockNumber();
+                log.debug('currentBlockAsNumber', currentBlockAsNumber);
+                let currentBlockAsBN = web3.utils.toBN(currentBlockAsNumber);
+                log.debug('currentBlockAsBN', currentBlockAsBN);
+                log.debug('Event Block Number', event.blockNumber);
+                let eventBlockAsBN = web3.utils.toBN(event.blockNumber);
+                log.debug('eventBlockAsBN', eventBlockAsBN);
+                log.debug(`Blocks: ${currentBlockAsBN} / ${eventBlockAsBN}`);
+                isStale = currentBlockAsBN.lt(eventBlockAsBN);
             } catch (e) {
-                log.warn('Exception while getting blocks', e.toString())
+                log.warn('Exception while getting blocks', e.toString());
             }
         } while(isStale);
 
@@ -573,7 +592,7 @@ module.exports = function (config, cached) {
             
             // Start Listening on all Events
             orgidContract.events.allEvents({ 
-                fromBlock: currentBlockNumber - web3.utils.toBN(500) /* -10 in case of service restart*/ 
+                fromBlock: web3.utils.toBN(currentBlockNumber).sub(web3.utils.toBN(500)) /* -10 in case of service restart*/ 
             }, (error, event) => {
 
                 // Callback for new errors or events
