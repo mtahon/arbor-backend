@@ -200,8 +200,12 @@ module.exports = function (config, cached) {
             .then(organization => {
 
                 // Check if organization exists
-                if(organization.exist) {
-                    resolve(organization);
+                try{
+                    if(organization.exist) {
+                        resolve(organization);
+                    }
+                } catch(e) {
+                    log.warn(`Error parsing ${orgid} from smartcontract`);
                 }
 
                 // Otherwise, attempt again later
@@ -418,7 +422,7 @@ module.exports = function (config, cached) {
         // Check the LIF deposit amount
         //const orgIdLifDepositAmount = parseFloat(`${organization.deposit.substr(0, organization.deposit.length - lifDecimals)}.${organization.deposit.substr(organization.deposit.length - lifDecimals)}`);
         let lifDeposit = web3.utils.fromWei(organization.deposit, 'ether');
-        let isLifProved =  lifDeposit >= environment.lifMinimumDeposit;
+        let isLifProved =  Number(lifDeposit) >= environment.lifMinimumDeposit;
 
         // Facebook Trust clue
         let isSocialFBProved = false;
@@ -514,22 +518,20 @@ module.exports = function (config, cached) {
 
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
-        var isStale = true;
+        let isStale = false;
         do {
             try{
                 let currentBlock = web3.utils.toBN(await getCurrentBlockNumber());
                 let eventBlock = web3.utils.toBN(event.blockNumber);
                 log.debug(`Blocks: ${currentBlock} / ${eventBlock}`);
-                isStale = currentBlock < eventBlock;
+                isStale = currentBlock.lt(eventBlock);
             } catch (e) {
                 log.warn('Exception while getting blocks', e.toString())
-                isStale = false;
             }
-        }
-        while(isStale);
+        } while(isStale);
 
         try {
-            log.debug(event.event ? event.event : event.raw, event.returnValues);
+            log.debug(event.event ? JSON.stringify(event.event) : event.raw, event.returnValues);
             let organization, subOrganization;
             switch (event.event) {
                 case "OrganizationCreated":
@@ -571,12 +573,12 @@ module.exports = function (config, cached) {
             
             // Start Listening on all Events
             orgidContract.events.allEvents({ 
-                fromBlock: currentBlockNumber - 500 /* -10 in case of service restart*/ 
+                fromBlock: currentBlockNumber - web3.utils.toBN(500) /* -10 in case of service restart*/ 
             }, (error, event) => {
 
                 // Callback for new errors or events
-                if(error) log.debug(`Error: ${error}`);
-                if(event) log.debug(`Event: ${event}`);
+                if(error) log.debug(`Error: ${JSON.stringify(error)}`);
+                if(event) log.debug(`Event: ${JSON.stringify(event)}`);
             })
 
             // Connection established
