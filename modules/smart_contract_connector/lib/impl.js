@@ -514,10 +514,20 @@ module.exports = function (config, cached) {
 
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
-        let eventBlockNumber = event.blockNumber;
-        while(web3.utils.toBN(event.blockNumber).gt(web3.utils.toBN(await getCurrentBlockNumber()))) {
-            log.debug('Block is stale');
+        var isStale = true;
+        do {
+            try{
+                let currentBlock = web3.utils.toBN(await getCurrentBlockNumber());
+                let eventBlock = web3.utils.toBN(event.blockNumber);
+                log.debug(`Blocks: ${currentBlock} / ${eventBlock}`);
+                isStale = currentBlock < eventBlock;
+            } catch (e) {
+                log.warn('Exception while getting blocks', e.toString())
+                isStale = false;
+            }
         }
+        while(isStale);
+
         try {
             log.debug(event.event ? event.event : event.raw, event.returnValues);
             let organization, subOrganization;
