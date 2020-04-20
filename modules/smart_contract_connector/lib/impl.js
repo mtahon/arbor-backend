@@ -515,7 +515,7 @@ module.exports = function (config, cached) {
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
         let eventBlockNumber = event.blockNumber;
-        while(Number(await getCurrentBlockNumber()) < Number(event.blockNumber)) {
+        while(event.blockNumber.gt(await getCurrentBlockNumber())) {
             log.debug('Block is stale');
         }
         try {
