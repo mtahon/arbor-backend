@@ -23,7 +23,7 @@ module.exports = function (config, cached) {
 
     // Establish websocket and register to events
     const WSS_URI = `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`;
-    var provider = new Web3.providers.WebsocketProvider(WSS_URI, {reconnect: {auto: true}});
+    var provider = new Web3.providers.WebsocketProvider(WSS_URI);
     const web3 = new Web3(provider);
     const registerProviderEvents = (provider => {
 
@@ -40,11 +40,11 @@ module.exports = function (config, cached) {
         // Subscribe to websocket connection errors
         provider.on('end', e => {
             log.debug(`WS closed, reason: ${e.closeDescription}`);
-            //log.debug('Attempting to reconnect...');
-            //provider = new Web3.providers.WebsocketProvider(WSS_URI);
-            //registerProviderEvents(provider);
-            //web3.setProvider(provider);
-            //listenEvents();
+            log.debug('Attempting to reconnect...');
+            provider = new Web3.providers.WebsocketProvider(WSS_URI);
+            registerProviderEvents(provider);
+            web3.setProvider(provider);
+            listenEvents();
         });
     });
     registerProviderEvents(provider);
