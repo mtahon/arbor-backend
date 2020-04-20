@@ -515,7 +515,7 @@ module.exports = function (config, cached) {
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
         let eventBlockNumber = event.blockNumber;
-        while(event.blockNumber.gt(await getCurrentBlockNumber())) {
+        while(web3.utils.toBN(event.blockNumber).gt(web3.utils.toBN(await getCurrentBlockNumber()))) {
             log.debug('Block is stale');
         }
         try {
